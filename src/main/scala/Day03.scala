@@ -4,25 +4,19 @@ private lazy val lines = input("Day03.txt")
 
 private def part01(): Unit =
   val result = lines.map(line => batch(lines, line)).map(triplet => {
-    val numberMatches = ("\\d+".r findAllIn triplet._2).toList
+    val numberMatches = ("\\d+".r findAllIn triplet._2).matchData
 
-    var activeLine = triplet._2
+    numberMatches.map(matchData => {
+      val number = matchData.matched.toInt
 
-    numberMatches.map(m => {
-      val number = m.toInt
-
-      val indexStart = activeLine.indexOf(m) - 1
-      val indexEnd = activeLine.indexOf(m) + m.length + 1
+      val indexStart = matchData.start - 1
+      val indexEnd = matchData.end + 1
 
       val above = if triplet._1 != null then findSymbols(indexStart, indexEnd, triplet._1) else 0
       val adjacent = findSymbols(indexStart, indexEnd, triplet._2)
       val below = if triplet._3 != null then findSymbols(indexStart, indexEnd, triplet._3) else 0
 
       val sum = above + adjacent + below
-
-      println(s"found $sum for $number")
-
-      activeLine = activeLine.replaceFirst(m, if m.length == 3 then "..." else "..")
 
       number * sum
     }).sum
