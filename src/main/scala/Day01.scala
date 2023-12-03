@@ -2,7 +2,7 @@ import util.input
 
 private lazy val lines = input("Day01.txt")
 
-def part01(): Unit =
+private def part01(): Unit =
   val sum = lines.map(line => ("\\d".r findAllIn line).toList)
     .map(numbers => s"${numbers.head}${numbers.last}")
     .map(number => number.toInt)
@@ -11,7 +11,7 @@ def part01(): Unit =
   print("Part 01: ")
   println(sum)
 
-def part02(): Unit =
+private def part02(): Unit =
   val numbersName = Map(
     "one" -> "o1e",
     "two" -> "t2o",
