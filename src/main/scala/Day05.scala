@@ -1,13 +1,15 @@
 import util.input
 
 import scala.annotation.tailrec
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable
+import scala.collection.mutable.{ListBuffer, Map}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.*
 import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
 import scala.util.control.Breaks.{break, breakable}
-import concurrent.ExecutionContext.Implicits.global
 
 private lazy val lines = input("Day05.txt")
+
 private val markers = Array("seed-to-soil map:", "soil-to-fertilizer map:", "fertilizer-to-water map:", "water-to-light map:",
   "light-to-temperature map:", "temperature-to-humidity map:", "humidity-to-location map:")
 
@@ -15,7 +17,9 @@ private def part01(): Unit =
   val seedsLine = lines.head
   val seeds = seedsLine.substring(seedsLine.indexOf(": ") + 2, seedsLine.length).split("\\s").map(s => s.toLong)
 
-  val result = seeds.map(seed => findLocation(seed, lines.iterator)).min
+  val lookup = parse()
+
+  val result = seeds.map(seed => findLocation(seed, lookup)).min
 
   println("Part01")
   println(result)
@@ -25,11 +29,11 @@ private def part02(): Unit =
   val seeds = seedsLine.substring(seedsLine.indexOf(": ") + 2, seedsLine.length).split("\\s")
     .map(s => s.toLong).grouped(2).map(group => (group.head, group.head + group.last)).toList.sorted
 
-  val merged = collapse(seeds);
+  val lookup = parse()
 
-  val futures = Future.sequence(merged.map(tuple => tuple._1 until tuple._2).map(range => {
+  val futures = Future.sequence(seeds.map(tuple => tuple._1 until tuple._2).map(range => {
     Future(
-      range.map(seed => findLocation(seed, lines.iterator)).min
+      range.map(seed => findLocation(seed, lookup)).min
     )
   }))
 
@@ -38,53 +42,53 @@ private def part02(): Unit =
   println("Part02")
   println(result)
 
-private def findLocation(seed: Long, linesIterator: Iterator[String]): Long =
-  linesIterator.next
-
-  extract(seed, linesIterator, 1)
+private def findLocation(seed: Long, lookup: mutable.Map[String, ListBuffer[(Long, Long, Long)]]): Long =
+  extract(seed, lookup, 0)
 
 @tailrec
-private def extract(source: Long, iterator: Iterator[String], index: Int): Long =
+private def extract(source: Long, lookup: mutable.Map[String, ListBuffer[(Long, Long, Long)]], index: Int): Long =
   var value = source
 
-  val endTerm = if index < markers.length then markers.apply(index) else ""
+  val values = lookup.apply(markers.apply(index))
 
-  iterator.takeWhile(_!= endTerm).filter(s => s != "" && !markers.contains(s)).foreach(line => {
+  values.foreach(tuple =>
     breakable {
       // avoid overwriting
       if (value == source) {
         // (destination, source, range)
-        val tuple = lineToTuple(line)
         if tuple._2 to (tuple._2 + tuple._3) contains source then value = tuple._1 + (source - tuple._2)
 
         if value != source then break()
       }
     }
-  })
+  )
 
-  if index < markers.length then extract(value, iterator, index + 1) else value
+  if index + 1 < markers.length then extract(value, lookup, index + 1) else value
 
 private def lineToTuple(line: String): (Long, Long, Long) =
   val split = line.split("\\s").map(s => s.toLong)
 
   (split(0), split(1), split(2))
 
-@tailrec
-private def collapse(rs: List[(Long, Long)], sep: List[(Long, Long)] = Nil): List[(Long, Long)] = rs match {
-  case x :: y :: rest =>
-    if (y._1 > x._2) collapse(y :: rest, x :: sep)
-    else collapse((x._1, List(x._2, y._2).max) :: rest, sep)
-  case _ =>
-    (rs ::: sep).reverse
-}
+private def parse(): mutable.Map[String, ListBuffer[(Long, Long, Long)]] =
+  lazy val lookup = mutable.Map[String, ListBuffer[(Long, Long, Long)]]()
 
-@tailrec
-private def merge(ranges: List[(Long, Long)], acc: ListBuffer[(Long, Long)]): ListBuffer[(Long, Long)] = ranges match {
-  case a :: b :: rest if a._2 >= b._1 => merge((a._1, Math.max(a._2, b._2)) :: rest, acc)
-  case a :: b :: rest                 => merge(b :: rest, acc += a )
-  case a :: Nil                       => acc += a
-  case _                              => acc
-}
+  var marker = markers.head
+
+  lines.iterator.zipWithIndex.filter((line, index) => index > 2 && line != "").foreach((line, index) => {
+    val query = markers.indexOf(line)
+
+    if query > -1 then
+      marker = markers.apply(query)
+    else
+      val list = if lookup.contains(marker) then lookup.apply(marker) else ListBuffer()
+
+      list += lineToTuple(line)
+
+      lookup += (marker -> list)
+  })
+
+  lookup
 
 @main def day05(): Unit =
   // part01()
