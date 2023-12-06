@@ -17,7 +17,7 @@ private def part01(): Unit =
   val seedsLine = lines.head
   val seeds = seedsLine.substring(seedsLine.indexOf(": ") + 2, seedsLine.length).split("\\s").map(s => s.toLong)
 
-  val lookup = parse()
+  val lookup = this.parse()
 
   val result = seeds.map(seed => findLocation(seed, lookup)).min
 
@@ -29,7 +29,7 @@ private def part02(): Unit =
   val seeds = seedsLine.substring(seedsLine.indexOf(": ") + 2, seedsLine.length).split("\\s")
     .map(s => s.toLong).grouped(2).map(group => (group.head, group.head + group.last)).toList.sorted
 
-  val lookup = parse()
+  val lookup = this.parse()
 
   val futures = Future.sequence(seeds.map(tuple => tuple._1 until tuple._2).map(range => {
     Future(
